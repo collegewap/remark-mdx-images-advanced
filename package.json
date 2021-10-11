@@ -1,6 +1,6 @@
 {
   "name": "remark-mdx-images-advanced",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "adding width and height support for remark-mdx-images",
   "license": "MIT",
   "keywords": [

@@ -12,7 +12,6 @@ const remarkMdxImages =
   (ast) => {
     const imports = [];
     const imported = new Map();
-    console.log(ast);
     visit(ast, "image", (node, index, parent) => {
       let { alt = null, title, url } = node;
       if (urlPattern.test(url)) {
