@@ -3,13 +3,17 @@ const sizeOf = require("image-size");
 const jimp = require("jimp");
 const path = require("path");
 // eslint-disable-next-line unicorn/no-unsafe-regex
-const urlPattern = /^(https?:)?\//;
+const urlPattern = /^(https?:)/;
 const relativePathPattern = /\.\.?\//;
 /**
  * A Remark plugin for converting Markdown images to MDX images using imports for the image source and adding width and height.
  */
 const remarkMdxImages =
-  ({ resolve = true, dir = "" } = {}) =>
+  ({
+    resolve = true,
+    dir = "",
+    publicDir = path.resolve(process.cwd(), "public"),
+  } = {}) =>
   async (ast) => {
     const imports = [];
     const imported = new Map();
@@ -18,11 +22,18 @@ const remarkMdxImages =
 
     visit(ast, "image", (node, index, parent) => {
       let { alt = null, title, url } = node;
+      let absoluteUrl = false;
       if (urlPattern.test(url)) {
         return;
       }
       if (!relativePathPattern.test(url) && resolve) {
+        absoluteUrl = true;
         url = `./${url}`;
+      }
+      if (absoluteUrl === true) {
+        url = path.resolve(publicDir, url);
+      } else {
+        url = path.resolve(dir, url);
       }
       let name = imported.get(url);
       if (!name) {
@@ -91,7 +102,7 @@ const remarkMdxImages =
         });
       }
       try {
-        const dimensions = sizeOf(path.join(dir, url));
+        const dimensions = sizeOf(url);
         textElement.attributes.push({
           type: "mdxJsxAttribute",
           name: "width",
@@ -103,7 +114,7 @@ const remarkMdxImages =
           value: dimensions.height,
         });
 
-        imageData.push({ textElement, url: path.join(dir, url) });
+        imageData.push({ textElement, url });
       } catch (e) {
         console.log(e);
       }
