@@ -1,5 +1,6 @@
 const visit = require("unist-util-visit");
 const sizeOf = require("image-size");
+const jimp = require("jimp");
 const path = require("path");
 // eslint-disable-next-line unicorn/no-unsafe-regex
 const urlPattern = /^(https?:)?\//;
@@ -9,9 +10,12 @@ const relativePathPattern = /\.\.?\//;
  */
 const remarkMdxImages =
   ({ resolve = true, dir = "" } = {}) =>
-  (ast) => {
+  async (ast) => {
     const imports = [];
     const imported = new Map();
+
+    let imageData = [];
+
     visit(ast, "image", (node, index, parent) => {
       let { alt = null, title, url } = node;
       if (urlPattern.test(url)) {
@@ -98,11 +102,33 @@ const remarkMdxImages =
           name: "height",
           value: dimensions.height,
         });
+
+        imageData.push({ textElement, url: path.join(dir, url) });
       } catch (e) {
         console.log(e);
       }
       parent.children.splice(index, 1, textElement);
     });
+
+    try {
+      // Generating blur URL
+      // https://spectrum.chat/unified/syntax-tree/is-there-any-way-to-execute-async-work-when-visiting-a-node-in-unist-util-visit~28177826-628e-44e3-ac3e-0ffb53c195c6
+      await Promise.all(
+        imageData.map(async (d) => {
+          const image = await jimp.read(d.url);
+          const resized = image.resize(50, jimp.AUTO);
+          const base64 = await resized.getBase64Async(jimp.MIME_JPEG);
+          d.textElement.attributes.push({
+            type: "mdxJsxAttribute",
+            name: "blurDataURL",
+            value: base64,
+          });
+        })
+      );
+    } catch (e) {
+      console.log(e);
+    }
+
     ast.children.unshift(...imports);
   };
 module.exports = remarkMdxImages;
